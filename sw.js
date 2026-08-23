@@ -1,9 +1,8 @@
-/* 深淵タイマー Service Worker — 起動性能最適化版 */
-/* 公開時にindex.htmlまたは静的ファイルを更新したら CACHE_NAME を上げる。 */
+/* 深淵タイマー Service Worker — 静かな更新版 */
+/* CACHE_NAME は既存キャッシュを維持。更新時は新SWを待機させ、復帰時の即時切替を抑える。 */
 const CACHE_PREFIX = 'abyss2-game-split-';
 const CACHE_NAME = 'abyss2-game-split-v16-touch-overlay-final';
 
-// 起動に必須の最小アプリシェル。アイコンは公開先に置く前提。
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -21,13 +20,13 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      // 失敗した1ファイルでアプリシェル全体の更新を止めない。
       await Promise.all(CORE_ASSETS.map(async (url) => {
         try {
           await cache.add(new Request(url, { cache: 'reload' }));
         } catch (_) {}
       }));
-      await self.skipWaiting();
+      // 意図的に skipWaiting() は呼ばない。
+      // 新SWを待機させ、現在開いているPWAへの即時切替を避ける。
     })()
   );
 });
@@ -41,7 +40,8 @@ self.addEventListener('activate', (event) => {
           .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       );
-      await self.clients.claim();
+      // clients.claim() も呼ばない。
+      // 次回の通常起動時に新SWへ自然に切り替わる。
     })()
   );
 });
@@ -53,7 +53,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // アプリシェルはキャッシュ優先で返し、オンライン起動時の余計な再取得を避ける。
   event.respondWith(
     caches.match(request).then(async (cached) => {
       if (cached) return cached;
@@ -66,7 +65,6 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       } catch (_) {
-        // ナビゲーション要求だけは、キャッシュ済みのアプリ本体へフォールバックする。
         if (request.mode === 'navigate') {
           return (await caches.match('./index.html')) || Response.error();
         }
