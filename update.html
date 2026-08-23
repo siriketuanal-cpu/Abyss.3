@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>深淵タイマーを更新中</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#07090c;color:#eef3fb;font-family:system-ui,sans-serif}.box{max-width:28rem;padding:2rem;text-align:center}.small{color:#9ca9b9;font-size:.9rem;line-height:1.7}</style>
+<main class="box"><h1>更新しています</h1><p id="status" class="small">旧PWAキャッシュを安全に切り替えています。数秒お待ちください。</p></main>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  try{
+    const targetPath='/Abyss.3/';
+    const registrations=await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.filter(registration=>new URL(registration.scope).pathname===targetPath).map(registration=>registration.unregister()));
+    const cacheNames=await caches.keys();
+    await Promise.all(cacheNames.filter(name=>name==='abyss-timer-flat-v1-github'||name.startsWith('abyss2-game-split-')).map(name=>caches.delete(name)));
+    status.textContent='更新が完了しました。新しいコンパクト版を開いています。';
+    // 通常のHTTPキャッシュに残った旧index.htmlを避けるため、更新ごとに一意なURLで開く。
+    setTimeout(()=>location.replace('./?pwa=updated-v16-'+Date.now().toString(36)),700);
+  }catch(error){
+    status.textContent='更新に失敗しました。画面を閉じて、もう一度このURLを開いてください。';
+  }
+})();
+</script>
+</html>
