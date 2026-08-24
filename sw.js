@@ -1,6 +1,6 @@
 /* 深淵タイマー Service Worker — 静かな復帰最適化版 */
 const CACHE_PREFIX = 'abyss2-game-split-';
-const CACHE_NAME = 'abyss2-game-split-v28-abysss-final-v248';
+const CACHE_NAME = 'abyss2-game-split-v29-abysss-final-v249';
 
 const CORE_ASSETS = new Set([
   './',
@@ -10,7 +10,7 @@ const CORE_ASSETS = new Set([
   './abysss-core-v1.js?v=4',
   './styles-primary-v237.min.css?v=22',
   './styles-games-v237.min.css?v=20',
-  './app-primary-v237.min.js?v=26',
+  './app-primary-v237.min.js?v=27',
   './games-deferred-v237.min.js?v=20',
   './manifest.json',
   './icon-192.png',
