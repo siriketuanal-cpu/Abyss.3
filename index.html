@@ -11,13 +11,13 @@
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <meta name="mobile-web-app-capable" content="yes">
 
-  <link rel="stylesheet" href="styles-primary-v237.min.css?v=20">
+  <link rel="stylesheet" href="styles-primary-v237.min.css?v=21">
 <style id="abysss-version-style">.app-version{display:inline-block!important;padding:0!important;border:0!important;background:transparent!important;font:inherit!important;font-size:10px!important;line-height:1!important;color:#fff!important;opacity:.9!important;margin:0!important;cursor:pointer!important;user-select:none!important;-webkit-appearance:none!important;appearance:none!important}.app-version:active{opacity:.7}</style>
 </head>
 <body>
 <div class="wrap">
   <div class="bar">
-    <div class="bar-left"><button class="app-version" id="appVersion" type="button" aria-label="最新版を確認">v2.42</button></div>
+    <div class="bar-left"><button class="app-version" id="appVersion" type="button" aria-label="最新版を確認">v2.43</button></div>
     <span class="daily-val" id="dailyDateDisplay">—</span>
     <span class="daily-progress" id="dailyProgress"></span>
   </div>
@@ -34,9 +34,9 @@
 </div>
 <footer><span id="saveStamp">読み込み中…</span></footer>
 
-<script defer src="abysss-timer-model-v1.js?v=2"></script>
-<script defer src="abysss-core-v1.js?v=3"></script>
-<script defer src="app-primary-v237.min.js?v=21"></script>
-<script>(()=>{const VERSION='2.42',el=document.getElementById('appVersion');if(el){el.textContent='v2.42';el.addEventListener('click',async()=>{el.textContent='更新…';try{if(navigator.serviceWorker){const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update();if(reg&&reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'});await new Promise(resolve=>{let done=!1;const finish=()=>{if(done)return;done=!0;resolve()};navigator.serviceWorker.addEventListener('controllerchange',finish,{once:!0});setTimeout(finish,900)})}else{await new Promise(r=>setTimeout(r,120))}}const u=new URL(location.href);u.searchParams.set('update',Date.now().toString(36));location.replace(u.toString())}catch(_){location.reload()}})}window.__abysssVersion=VERSION})();</script>
+<script defer src="abysss-timer-model-v1.js?v=3"></script>
+<script defer src="abysss-core-v1.js?v=4"></script>
+<script defer src="app-primary-v237.min.js?v=22"></script>
+<script>(()=>{const VERSION='2.43',el=document.getElementById('appVersion');if(el){el.textContent='v2.43';el.addEventListener('click',async()=>{el.textContent='更新…';try{if(navigator.serviceWorker){const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update();if(reg&&reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'});await new Promise(resolve=>{let done=!1;const finish=()=>{if(done)return;done=!0;resolve()};navigator.serviceWorker.addEventListener('controllerchange',finish,{once:!0});setTimeout(finish,900)})}else{await new Promise(r=>setTimeout(r,120))}}const u=new URL(location.href);u.searchParams.set('update',Date.now().toString(36));location.replace(u.toString())}catch(_){location.reload()}})}window.__abysssVersion=VERSION})();</script>
 </body>
 </html>
