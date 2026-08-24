@@ -1,13 +1,14 @@
 /* 深淵タイマー Service Worker — 静かな復帰最適化版 */
 const CACHE_PREFIX = 'abyss2-game-split-';
-const CACHE_NAME = 'abyss2-game-split-v16-touch-overlay-final';
+const CACHE_NAME = 'abyss2-game-split-v17-abysss-core';
 
 const CORE_ASSETS = new Set([
   './',
   './index.html',
-  './styles-primary-v237.min.css?v=16',
+  './abysss-core-v1.js?v=1',
+  './styles-primary-v237.min.css?v=17',
   './styles-games-v237.min.css?v=16',
-  './app-primary-v237.min.js?v=16',
+  './app-primary-v237.min.js?v=17',
   './games-deferred-v237.min.js?v=16',
   './manifest.json',
   './icon-192.png',
