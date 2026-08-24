@@ -17,7 +17,7 @@
 <body>
 <div class="wrap">
   <div class="bar">
-    <div class="bar-left"><button class="app-version" id="appVersion" type="button" aria-label="最新版を確認">v2.47</button></div>
+    <div class="bar-left"><button class="app-version" id="appVersion" type="button" aria-label="最新版を確認">v2.48</button></div>
     <span class="daily-val" id="dailyDateDisplay">—</span>
     <span class="daily-progress" id="dailyProgress"></span>
   </div>
@@ -36,7 +36,7 @@
 
 <script defer src="abysss-timer-model-v1.js?v=3"></script>
 <script defer src="abysss-core-v1.js?v=4"></script>
-<script defer src="app-primary-v237.min.js?v=25"></script>
-<script>(()=>{const VERSION='2.47',el=document.getElementById('appVersion');if(el){el.textContent='v2.47';el.addEventListener('click',async()=>{el.textContent='更新…';try{if(navigator.serviceWorker){const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update();if(reg&&reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'});await new Promise(resolve=>{let done=!1;const finish=()=>{if(done)return;done=!0;resolve()};navigator.serviceWorker.addEventListener('controllerchange',finish,{once:!0});setTimeout(finish,900)})}else{await new Promise(r=>setTimeout(r,120))}}const u=new URL(location.href);u.searchParams.set('update',Date.now().toString(36));location.replace(u.toString())}catch(_){location.reload()}})}window.__abysssVersion=VERSION})();</script>
+<script defer src="app-primary-v237.min.js?v=26"></script>
+<script>(()=>{const VERSION='2.48',el=document.getElementById('appVersion');if(el){el.textContent='v2.48';el.addEventListener('click',async()=>{el.textContent='更新…';try{if(navigator.serviceWorker){const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update();if(reg&&reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'});await new Promise(resolve=>{let done=!1;const finish=()=>{if(done)return;done=!0;resolve()};navigator.serviceWorker.addEventListener('controllerchange',finish,{once:!0});setTimeout(finish,900)})}else{await new Promise(r=>setTimeout(r,120))}}const u=new URL(location.href);u.searchParams.set('update',Date.now().toString(36));location.replace(u.toString())}catch(_){location.reload()}})}window.__abysssVersion=VERSION})();</script>
 </body>
 </html>
