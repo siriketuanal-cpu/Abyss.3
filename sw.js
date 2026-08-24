@@ -39,6 +39,8 @@ self.addEventListener('install', (event) => {
   })());
 });
 
+self.addEventListener('message', (event) => { if(event.data?.type==='SKIP_WAITING') self.skipWaiting(); });
+
 self.addEventListener('activate', (event) => {
   // 更新時のみ旧キャッシュを整理する。
   // CACHE_NAMEを維持しているので通常は不要。
