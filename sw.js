@@ -1,10 +1,11 @@
 /* 深淵タイマー Service Worker — 静かな復帰最適化版 */
 const CACHE_PREFIX = 'abyss2-game-split-';
-const CACHE_NAME = 'abyss2-game-split-v18-abysss-core';
+const CACHE_NAME = 'abyss2-game-split-v19-abysss-core-update';
 
 const CORE_ASSETS = new Set([
   './',
   './index.html',
+  './sw.js',
   './abysss-core-v1.js?v=1',
   './styles-primary-v237.min.css?v=18',
   './styles-games-v237.min.css?v=18',
@@ -34,12 +35,12 @@ self.addEventListener('install', (event) => {
         await cache.add(new Request(url, { cache: 'reload' }));
       } catch (_) {}
     }
-    // skipWaiting() は使わない。現在のPWAへ即時切替しない。
+    self.skipWaiting();
   })());
 });
 
 self.addEventListener('activate', (event) => {
-  // 旧キャッシュの掃除は復帰直後の負荷を避けるため行わない。
+  // 更新時のみ旧キャッシュを整理する。
   // CACHE_NAMEを維持しているので通常は不要。
 });
 
