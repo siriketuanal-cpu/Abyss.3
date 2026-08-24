@@ -9,14 +9,14 @@
 (async()=>{
   const status=document.getElementById('status');
   try{
-    const targetPath='/Abyss.3/';
+    const targetPath=location.pathname.replace(/update\.html$/,'');
     const registrations=await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.filter(registration=>new URL(registration.scope).pathname===targetPath).map(registration=>registration.unregister()));
     const cacheNames=await caches.keys();
     await Promise.all(cacheNames.filter(name=>name==='abyss-timer-flat-v1-github'||name.startsWith('abyss2-game-split-')).map(name=>caches.delete(name)));
     status.textContent='更新が完了しました。新しいコンパクト版を開いています。';
     // 通常のHTTPキャッシュに残った旧index.htmlを避けるため、更新ごとに一意なURLで開く。
-    setTimeout(()=>location.replace('./?pwa=updated-v16-'+Date.now().toString(36)),700);
+    setTimeout(()=>location.replace('./?pwa=updated-v17-'+Date.now().toString(36)),700);
   }catch(error){
     status.textContent='更新に失敗しました。画面を閉じて、もう一度このURLを開いてください。';
   }
