@@ -1,6 +1,6 @@
 /* 深淵タイマー Service Worker — 静かな復帰最適化版 */
 const CACHE_PREFIX = 'abyss2-game-split-';
-const CACHE_NAME = 'abyss2-game-split-v39-abysss-final-v259';
+const CACHE_NAME = 'abyss2-game-split-v40-baseline-v260';
 
 const CORE_ASSETS = new Set([
   './',
