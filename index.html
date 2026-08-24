@@ -33,24 +33,7 @@
   <div class="backdrop" id="backdrop" onclick="closeAllPanels()"></div>
 </div>
 <footer><span id="saveStamp">読み込み中…</span></footer>
-<script>
-/* Abyss.3 起動・復帰ウォッチドッグ
-   通常時は監視だけ。異常時のみ段階的に復旧する。 */
-(()=>{const K="abyss3:boot-recovery",MAX=1;let recovered=false,last=0;
-const ok=()=>{const g=document.getElementById("grid");return !!(g&&g.children.length)};
-const once=()=>{if(recovered)return;try{if(sessionStorage.getItem(K)==="1")return}catch(_){}
-recovered=true;try{sessionStorage.setItem(K,"1")}catch(_){}
-setTimeout(()=>location.reload(),80)};
-const check=delay=>setTimeout(()=>{if(!ok())once()},delay);
-const onResume=()=>{if(document.hidden)return;const now=Date.now();if(now-last<700)return;last=now;
-requestAnimationFrame(()=>{if(ok()){try{sessionStorage.removeItem(K)}catch(_){}return}
-check(900)})};
-document.addEventListener("visibilitychange",onResume,{passive:true});
-window.addEventListener("pageshow",onResume,{passive:true});
-window.addEventListener("focus",onResume,{passive:true});
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>check(4200),{once:true,passive:true});else check(4200);
-})();
-</script>
+
 <script defer src="abysss-timer-model-v1.js?v=1"></script>
 <script defer src="abysss-core-v1.js?v=2"></script>
 <script defer src="app-primary-v237.min.js?v=20"></script>
