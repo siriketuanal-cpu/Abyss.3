@@ -1,15 +1,15 @@
 /* 深淵タイマー Service Worker — 静かな復帰最適化版 */
 const CACHE_PREFIX = 'abyss2-game-split-';
-const CACHE_NAME = 'abyss2-game-split-v24-abysss-final-v244';
+const CACHE_NAME = 'abyss2-game-split-v25-abysss-final-v245';
 
 const CORE_ASSETS = new Set([
   './',
   './index.html',
   './sw.js',
-  './abysss-timer-model-v1.js?v=1',
-  './abysss-core-v1.js?v=2',
-  './styles-primary-v237.min.css?v=18',
-  './styles-games-v237.min.css?v=18',
+  './abysss-timer-model-v1.js?v=3',
+  './abysss-core-v1.js?v=4',
+  './styles-primary-v237.min.css?v=22',
+  './styles-games-v237.min.css?v=20',
   './app-primary-v237.min.js?v=23',
   './games-deferred-v237.min.js?v=20',
   './manifest.json',
@@ -43,8 +43,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('message', (event) => { if(event.data?.type==='SKIP_WAITING') self.skipWaiting(); });
 
 self.addEventListener('activate', (event) => {
-  // 更新時のみ旧キャッシュを整理する。
-  // CACHE_NAMEを維持しているので通常は不要。
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
+    )
+  );
 });
 
 self.addEventListener('fetch', (event) => {
