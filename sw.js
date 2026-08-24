@@ -1,6 +1,6 @@
 /* 深淵タイマー Service Worker — 静かな復帰最適化版 */
 const CACHE_PREFIX = 'abyss2-game-split-';
-const CACHE_NAME = 'abyss2-game-split-v36-abysss-final-v256';
+const CACHE_NAME = 'abyss2-game-split-v37-abysss-final-v257';
 
 const CORE_ASSETS = new Set([
   './',
@@ -10,7 +10,7 @@ const CORE_ASSETS = new Set([
   './abysss-core-v1.js?v=4',
   './styles-primary-v237.min.css?v=22',
   './styles-games-v237.min.css?v=20',
-  './app-primary-v237.min.js?v=34',
+  './app-primary-v237.min.js?v=35',
   './games-deferred-v237.min.js?v=20',
   './manifest.json',
   './icon-192.png',
@@ -65,13 +65,15 @@ self.addEventListener('fetch', (event) => {
   // コア資産とナビゲーションだけを処理して、復帰時の余計なcache.matchを減らす。
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('./index.html').then(async (cached) => {
-        if (cached) return cached;
-        try {
-          return await fetch(request);
-        } catch (_) {
-          return Response.error();
+      fetch(new Request(request, { cache: 'no-store' })).then(async (response) => {
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put('./index.html', response.clone());
         }
+        return response;
+      }).catch(async () => {
+        const cached = await caches.match('./index.html');
+        return cached || Response.error();
       })
     );
     return;
