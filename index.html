@@ -51,8 +51,9 @@ window.addEventListener("focus",onResume,{passive:true});
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>check(4200),{once:true,passive:true});else check(4200);
 })();
 </script>
-<script defer src="abysss-core-v1.js?v=1"></script>
+<script defer src="abysss-timer-model-v1.js?v=1"></script>
+<script defer src="abysss-core-v1.js?v=2"></script>
 <script defer src="app-primary-v237.min.js?v=18"></script>
-<script>(()=>{const v=document.getElementById("appVersion");if(!v)return;v.addEventListener("click",async()=>{v.textContent="更新…";try{if("serviceWorker"in navigator){const r=await navigator.serviceWorker.getRegistration();if(r){await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'});await new Promise(x=>setTimeout(x,250))}}const u=new URL(location.href);u.searchParams.set("update",Date.now().toString(36));location.replace(u.toString())}catch(_){location.reload()}})})();</script>
+<script>(()=>{const VERSION='2.40',el=document.getElementById('appVersion');if(el){el.textContent='v2.40';el.addEventListener('click',()=>{const u=new URL(location.href);u.searchParams.set('update',Date.now().toString(36));location.replace(u.toString())},{passive:true});window.__abysssVersion=VERSION}if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});if('caches'in window)caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k)))).catch(()=>{})}})();</script>
 </body>
 </html>
