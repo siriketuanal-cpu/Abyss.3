@@ -1,8 +1,9 @@
 :root{color-scheme:dark;--bg:#05070a;--line:#273346;--line-soft:#182231;--ink:#e4ebf6;--muted:#8290a5;--cyan:#72dbea;--orange:#f1a66a;--violet:#c6b5ff;--green:#70eab2;--focus:#b9aaff;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 [hidden]{display:none!important;}
-html,body{min-height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Hiragino Sans",Meiryo,sans-serif;}
-body{overscroll-behavior:none;}
+html,body{min-height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Hiragino Sans",Meiryo,sans-serif;overscroll-behavior-y:none;}
+body{overflow:hidden;touch-action:pan-x;}
+.page,.page *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .page{width:min(760px,100%);margin:0 auto;padding:10px 12px 28px;}
 .topbar{position:relative;height:28px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px;}
 .date-status{grid-column:2;justify-self:center;white-space:nowrap;}
@@ -17,6 +18,7 @@ body{overscroll-behavior:none;}
 .name-display{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;font:800 11px/1.15 ui-sans-serif,system-ui,-apple-system,"Hiragino Sans",Meiryo,sans-serif;}
 .rank-display{flex:none;color:var(--orange);font:800 11px/1.15 ui-monospace,monospace;cursor:text;}
 .name-input,.rank-input{min-width:0;padding:0;border:0;border-bottom:1px solid #d6e4f8;outline:0;background:transparent;color:#fff;font:inherit;}
+.name-input,.rank-input,.stam-edit,.sl-edit{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .name-input{width:62px;font-size:11px;line-height:1.15;}
 .rank-input{width:3ch;text-align:right;color:var(--orange);font:800 11px/1.15 ui-monospace,monospace;}
 .task-row{position:relative;width:100%;min-height:34px;padding:6px 28px 5px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);text-align:left;font:inherit;}

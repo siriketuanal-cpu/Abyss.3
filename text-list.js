@@ -167,7 +167,9 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
     input.value = type === 'name' ? state.slots[index].label : type === 'rank' ? String(state.slots[index].rank) : '';
     if (type === 'stam') adjustStamInputWidth(input);
     input.focus({ preventScroll:true });
+    if (type === 'name' || type === 'rank') moveCursorToEnd(input);
   }
+  function moveCursorToEnd(input){ const end=input.value.length; input.setSelectionRange(end,end); }
   function adjustStamInputWidth(input){ input.style.width = Math.max(1, input.value.length) * 1.05 + 'ch'; }
   function closeEdit(cancel){
     if (!edit) return;
@@ -223,6 +225,15 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
 
   function setupEvents(){
     const list = document.querySelector('.page');
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('copy', event => event.preventDefault());
+    document.addEventListener('cut', event => event.preventDefault());
+    document.addEventListener('selectstart', event => event.preventDefault());
+    document.addEventListener('dragstart', event => event.preventDefault());
+    let touchStartY = 0;
+    document.addEventListener('touchstart', event => { touchStartY = event.touches[0] ? event.touches[0].clientY : 0; }, { passive:true });
+    document.addEventListener('touchmove', event => { const point = event.touches[0]; if (point && window.scrollY <= 0 && point.clientY > touchStartY) event.preventDefault(); }, { passive:false });
+    list.addEventListener('pointerdown', event => { const input=event.target; if (input.matches('[data-name-editor],[data-rank-editor]')) { event.preventDefault(); input.focus({ preventScroll:true }); moveCursorToEnd(input); } });
     list.addEventListener('click', event => {
       const target = event.target;
       if (target.matches('input')) return;
