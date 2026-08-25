@@ -169,7 +169,7 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
     input.focus({ preventScroll:true });
     if (type === 'name' || type === 'rank') moveCursorToEnd(input);
   }
-  function moveCursorToEnd(input){ const apply=()=>{ const end=input.value.length; input.setSelectionRange(end,end); }; apply(); requestAnimationFrame(apply); }
+  function moveCursorToEnd(input){ const apply=()=>{ const end=input.value.length; input.setSelectionRange(end,end); }; apply(); requestAnimationFrame(apply); setTimeout(apply,0); }
   function adjustStamInputWidth(input){ input.style.width = Math.max(1, input.value.length) * 1.05 + 'ch'; }
   function closeEdit(cancel){
     if (!edit) return;
