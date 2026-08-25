@@ -1,7 +1,7 @@
 {
-  "name": "Abyss.3",
-  "short_name": "Abyss.3",
-  "description": "Dot Abyssとスターリープのための軽量タイマー",
+  "name": "ルナビィ",
+  "short_name": "ルナビィ",
+  "description": "回復を案内する深淵タイマー",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
