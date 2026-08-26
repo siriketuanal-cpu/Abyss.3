@@ -1,5 +1,6 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, loadStore, remainingAfter40, restartIdle, saveStore, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-lite-core.mjs';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-lite-core.mjs';
 import { applyFullRecovery, applyStamina as applySLStamina, createSLState, formatSLDuration, getTimerInfo, hasSLTimedProgress, parseFullRecoveryInput, SL_ORB_MAX, SL_ORB_STEP_MS, SL_STAM_MAX, SL_STAM_STEP_MS } from './starleap-lite-core.mjs';
+import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -8,7 +9,6 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
 
   let state = { slots:createSlots(), sl:createSLState() };
   let storageEnvelope = {};
-  let storedSlots = [];
   let refs = [];
   let selected = null;
   let edit = null;
@@ -18,12 +18,12 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
   let refreshTimer = null;
   let renderedDate = '';
 
-  function read(){ const loaded = loadStore(localStorage); storageEnvelope = loaded.envelope; state.slots = loaded.slots; state.sl = loaded.sl; storedSlots = loaded.storedSlots; }
+  function read(){ const loaded = loadV2Store(localStorage); storageEnvelope = loaded.envelope; state.slots = loaded.slots; state.sl = loaded.sl; }
 
   function write(index){
-    try { saveStore(localStorage, storageEnvelope, state.slots, storedSlots, index, state.sl); } catch (_) {}
+    try { saveV2Store(localStorage, storageEnvelope, state.slots, index, state.sl); } catch (_) {}
   }
-  function writeSL(){ try { saveStore(localStorage, storageEnvelope, state.slots, storedSlots, undefined, state.sl); } catch (_) {} }
+  function writeSL(){ try { saveV2Store(localStorage, storageEnvelope, state.slots, undefined, state.sl); } catch (_) {} }
   function slMarkup(){ return '<section class="starleap-line" aria-label="スターリープ"><span class="sl-item" data-sl-task="stamina" role="button" tabindex="0"><span class="sl-label">討伐依頼</span><span class="sl-value" data-sl-value="stamina"></span><input class="sl-edit" data-sl-editor="stamina" type="tel" inputmode="numeric" autocomplete="off" hidden><span class="sl-plan" data-sl-plan="stamina"></span></span><span class="sl-item" data-sl-task="orb" role="button" tabindex="0"><span class="sl-label">御大樹の恵み</span><span class="sl-value" data-sl-value="orb"></span><input class="sl-edit" data-sl-editor="orb" type="text" inputmode="numeric" autocomplete="off" hidden><span class="sl-plan" data-sl-plan="orb"></span></span></section>'; }
   function refreshSLItem(ref, isEditing, value, plan){ ref.value.hidden=isEditing; ref.input.hidden=!isEditing; if(!isEditing) setText(ref.value,value); setText(ref.plan,isEditing?'':plan); }
   function refreshSL(now){
@@ -44,13 +44,13 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
         '<span class="rank-display" data-rank-edit="' + index + '" role="button" tabindex="0">Lv.' + slot.rank + '</span>' +
         '<input class="rank-input" data-rank-editor="' + index + '" value="' + slot.rank + '" hidden inputmode="numeric" autocomplete="off">' +
       '</div>' +
-      '<div class="task-row compact-data" data-i="' + index + '" data-task="stam" role="button" tabindex="0">' +
-        '<span class="stam-group"><span class="stam-current stam-number" data-stam-number="' + index + '"></span>' +
+      '<div class="task-row timer-row compact-data" data-i="' + index + '">' +
+        '<span class="timer-cell stam-cell" data-i="' + index + '" data-task="stam" data-stam-confirm="' + index + '" role="button" tabindex="0">' +
+        '<span class="stam-group"><span class="stam-current stam-number" data-stam-number="' + index + '" data-stam-edit="' + index + '"></span>' +
         '<input class="stam-edit" data-stam-editor="' + index + '" type="tel" inputmode="numeric" autocomplete="off" spellcheck="false" hidden>' +
-        '<span class="task-slash">/</span><span class="task-max" data-stam-number="' + index + '"></span></span><span class="stam-confirm-zone" data-stam-confirm="' + index + '" aria-hidden="true"></span><span class="task-plan" data-stam-confirm="' + index + '"></span>' +
-      '</div>' +
-      '<div class="task-row compact-data" data-i="' + index + '" data-task="idle" role="button" tabindex="0">' +
-        '<strong class="task-value"></strong><span class="task-plan"></span>' +
+        '<span class="task-slash">/</span><span class="task-max" data-stam-number="' + index + '"></span><span class="stam-full" data-stam-number="' + index + '" hidden></span></span>' +
+        '</span>' +
+        '<span class="timer-cell idle-cell" data-i="' + index + '" data-task="idle" role="button" tabindex="0"><strong class="task-value"></strong><span class="task-plan"></span></span>' +
         '<span class="compact-check" data-compact-check="daily" data-check-index="' + index + '" role="button" tabindex="0" aria-label="デイリー"></span>' +
       '</div>' +
     '</section>';
@@ -61,15 +61,15 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
     list.innerHTML = state.slots.map(accountMarkup).join('');
     refs = state.slots.map((_, index) => {
       const root = list.querySelector('[data-slot="' + index + '"]');
-      const stamRow = root.querySelector('[data-task="stam"]');
-      const idleRow = root.querySelector('[data-task="idle"]');
+      const stamRow = root.querySelector('.stam-cell');
+      const idleRow = root.querySelector('.idle-cell');
       return {
         root,
         nameDisplay:root.querySelector('[data-name-edit]'), nameInput:root.querySelector('[data-name-editor]'),
         rankDisplay:root.querySelector('[data-rank-edit]'), rankInput:root.querySelector('[data-rank-editor]'),
       stamRow, stamNumber:stamRow.querySelector('.stam-number'), stamInput:stamRow.querySelector('[data-stam-editor]'),
-        stamMax:stamRow.querySelector('.task-max'), stamPlan:stamRow.querySelector('.task-plan'),
-        idleRow, idleValue:idleRow.querySelector('.task-value'), idlePlan:idleRow.querySelector('.task-plan'), dailyCheck:idleRow.querySelector('[data-compact-check="daily"]'),
+        stamMax:stamRow.querySelector('.task-max'), stamSlash:stamRow.querySelector('.task-slash'), stamFull:stamRow.querySelector('.stam-full'),
+        idleRow, idleValue:idleRow.querySelector('.task-value'), idlePlan:idleRow.querySelector('.task-plan'), dailyCheck:root.querySelector('[data-compact-check="daily"]'),
         snapshot:{ stam:{ current:0, plan:'—:—' }, idle:{ value:'未開始', plan:'—:—', full:false } }
       };
     });
@@ -89,9 +89,10 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
   }
   function editIs(type, index){ return edit && edit.type === type && edit.index === index; }
   function planForIdle(snapshot, index){
-    if (!selected || selected.index !== index || selected.task !== 'idle') return snapshot.idle.plan;
+    if (!selected || selected.index !== index || selected.task !== 'idle') return snapshot.idle.full ? fullAtLabel(snapshot.idle.plan) : '';
     return snapshot.idle.full ? '受取' : (snapshot.idle.value === '未開始' ? '開始' : '待機中');
   }
+  function fullAtLabel(plan){ return plan && plan !== '—:—' ? '満 ' + plan : '満'; }
 
   function refreshSlot(index, snapshot){
     const slot = state.slots[index];
@@ -109,15 +110,21 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
     ref.rankInput.hidden = !rankEditing;
     if (!rankEditing) setText(ref.rankDisplay, 'Lv.' + slot.rank);
 
-    ref.stamNumber.hidden = stamEditing;
+    const stamFull = !stamEditing && snapshot.stam.current >= slot.stamMax;
+    ref.stamNumber.hidden = stamEditing || stamFull;
     ref.stamInput.hidden = !stamEditing;
+    ref.stamSlash.hidden = stamFull;
+    ref.stamMax.hidden = stamFull;
+    ref.stamFull.hidden = !stamFull;
     if (!stamEditing) setText(ref.stamNumber, stamSelected ? selected.value : snapshot.stam.current);
-    setText(ref.stamMax, slot.stamMax);
-    setText(ref.stamPlan, stamSelected ? '確定' : snapshot.stam.plan);
+    if (!stamFull) setText(ref.stamMax, slot.stamMax);
+    if (stamFull) setText(ref.stamFull, fullAtLabel(snapshot.stam.plan));
     setSelected(ref.stamRow, stamSelected);
 
     setText(ref.idleValue, snapshot.idle.value);
     setText(ref.idlePlan, planForIdle(snapshot, index));
+    ref.idleValue.hidden = !!snapshot.idle.full;
+    ref.idlePlan.classList.toggle('is-full', !!snapshot.idle.full);
     setSelected(ref.idleRow, idleSelected);
 
     setCheck(ref.dailyCheck, slot.missionDone, selected && selected.index === index && selected.task === 'daily');
@@ -241,8 +248,8 @@ import { applyFullRecovery, applyStamina as applySLStamina, createSLState, forma
       if (name) { beginEdit('name', Number(name.dataset.nameEdit)); return; }
       const rank = target.closest('[data-rank-edit]');
       if (rank) { beginEdit('rank', Number(rank.dataset.rankEdit)); return; }
-      const stamNumber = target.closest('[data-stam-number]');
-      if (stamNumber) { beginEdit('stam', Number(stamNumber.dataset.stamNumber)); return; }
+      const stamEdit = target.closest('[data-stam-edit]');
+      if (stamEdit) { beginEdit('stam', Number(stamEdit.dataset.stamEdit)); return; }
       const stamConfirm = target.closest('[data-stam-confirm]');
       if (stamConfirm) { activate(Number(stamConfirm.dataset.stamConfirm), 'stam'); return; }
       const check = target.closest('[data-compact-check]');
