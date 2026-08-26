@@ -1,24 +1,23 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-lite-core.mjs';
-import { applyFullRecovery, applyStamina as applySLStamina, createSLState, formatSLDuration, getTimerInfo, hasSLTimedProgress, parseFullRecoveryInput, SL_ORB_MAX, SL_ORB_STEP_MS, SL_STAM_MAX, SL_STAM_STEP_MS } from './starleap-lite-core.mjs';
-import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs';
+import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const escape = value => String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
   const dateJP = () => { const date = new Date(); return date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日'; };
 
-  let state = { slots:createSlots(), sl:createSLState() };
+  let state = { slots:createSlots(), sl:null };
   let storageEnvelope = {};
   let refs = [];
   let selected = null;
   let edit = null;
   let slEdit = null;
   let slRefs = null;
+  let slRuntime = null;
   const slSnapshot = { stamina:{}, orb:{} };
   let refreshTimer = null;
   let renderedDate = '';
-
-  function read(){ const loaded = loadV2Store(localStorage); storageEnvelope = loaded.envelope; state.slots = loaded.slots; state.sl = loaded.sl; }
+  function applyLoaded(loaded){ storageEnvelope = loaded.envelope; state.slots = loaded.slots; state.sl = loaded.sl; }
 
   function write(index){
     try { saveV2Store(localStorage, storageEnvelope, state.slots, index, state.sl); } catch (_) {}
@@ -27,14 +26,17 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
   function slMarkup(){ return '<section class="starleap-line" aria-label="スターリープ"><span class="sl-item" data-sl-task="stamina" role="button" tabindex="0"><span class="sl-label">討伐依頼</span><span class="sl-value" data-sl-value="stamina"></span><input class="sl-edit" data-sl-editor="stamina" type="tel" inputmode="numeric" autocomplete="off" hidden><span class="sl-plan" data-sl-plan="stamina"></span></span><span class="sl-item" data-sl-task="orb" role="button" tabindex="0"><span class="sl-label">御大樹の恵み</span><span class="sl-value" data-sl-value="orb"></span><input class="sl-edit" data-sl-editor="orb" type="text" inputmode="numeric" autocomplete="off" hidden><span class="sl-plan" data-sl-plan="orb"></span></span></section>'; }
   function refreshSLItem(ref, isEditing, value, plan){ ref.value.hidden=isEditing; ref.input.hidden=!isEditing; if(!isEditing) setText(ref.value,value); setText(ref.plan,isEditing?'':plan); }
   function refreshSL(now){
+    if (!slRuntime || !slRefs || !state.sl) return;
+    const { getTimerInfo, SL_STAM_MAX, SL_STAM_STEP_MS, SL_ORB_MAX, SL_ORB_STEP_MS, formatSLDuration } = slRuntime;
     const stamina = getTimerInfo(state.sl.stamina, SL_STAM_MAX, SL_STAM_STEP_MS, now, slSnapshot.stamina);
     const orb = getTimerInfo(state.sl.orb, SL_ORB_MAX, SL_ORB_STEP_MS, now, slSnapshot.orb);
     refreshSLItem(slRefs.stamina, slEdit==='stamina', stamina.current+'/'+SL_STAM_MAX, stamina.running ? formatClock(stamina.fullAt) : (stamina.isFull ? 'MAX' : '—:—'));
     refreshSLItem(slRefs.orb, slEdit==='orb', '●'.repeat(orb.current)+'○'.repeat(SL_ORB_MAX-orb.current), orb.running ? ('次 '+formatSLDuration(orb.nextIn)+' / '+formatSLDuration(orb.fullIn)) : (orb.isFull ? 'MAX' : '—:—'));
   }
-  function beginSLEdit(type){ if(slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
-  function commitSLEdit(){ if(!slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) applySLStamina(state.sl.stamina,Number(digits),now); } else { const remaining=parseFullRecoveryInput(input.value); if(remaining!==null) applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
+  function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
+  function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
+  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
 
   function accountMarkup(slot, index){
     return '<section class="account" data-slot="' + index + '">' +
@@ -48,7 +50,7 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
         '<span class="timer-cell stam-cell" data-i="' + index + '" data-task="stam" data-stam-confirm="' + index + '" role="button" tabindex="0">' +
         '<span class="stam-group"><span class="stam-current stam-number" data-stam-number="' + index + '" data-stam-edit="' + index + '"></span>' +
         '<input class="stam-edit" data-stam-editor="' + index + '" type="tel" inputmode="numeric" autocomplete="off" spellcheck="false" hidden>' +
-        '<span class="task-slash">/</span><span class="task-max" data-stam-number="' + index + '"></span><span class="stam-full" data-stam-number="' + index + '" hidden></span></span>' +
+        '<span class="stam-full" hidden><span class="stam-full-label" data-stam-edit="' + index + '"></span><span class="stam-full-time" data-stam-confirm="' + index + '"></span></span><span class="task-slash">/</span><span class="task-max" data-stam-number="' + index + '"></span></span>' +
         '</span>' +
         '<span class="timer-cell idle-cell" data-i="' + index + '" data-task="idle" role="button" tabindex="0"><strong class="task-value"></strong><span class="task-plan"></span></span>' +
         '<span class="compact-check" data-compact-check="daily" data-check-index="' + index + '" role="button" tabindex="0" aria-label="デイリー"></span>' +
@@ -68,9 +70,9 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
         nameDisplay:root.querySelector('[data-name-edit]'), nameInput:root.querySelector('[data-name-editor]'),
         rankDisplay:root.querySelector('[data-rank-edit]'), rankInput:root.querySelector('[data-rank-editor]'),
       stamRow, stamNumber:stamRow.querySelector('.stam-number'), stamInput:stamRow.querySelector('[data-stam-editor]'),
-        stamMax:stamRow.querySelector('.task-max'), stamSlash:stamRow.querySelector('.task-slash'), stamFull:stamRow.querySelector('.stam-full'),
+        stamMax:stamRow.querySelector('.task-max'), stamSlash:stamRow.querySelector('.task-slash'), stamFull:stamRow.querySelector('.stam-full'), stamFullLabel:stamRow.querySelector('.stam-full-label'), stamFullTime:stamRow.querySelector('.stam-full-time'),
         idleRow, idleValue:idleRow.querySelector('.task-value'), idlePlan:idleRow.querySelector('.task-plan'), dailyCheck:root.querySelector('[data-compact-check="daily"]'),
-        snapshot:{ stam:{ current:0, plan:'—:—' }, idle:{ value:'未開始', plan:'—:—', full:false } }
+        snapshot:{ stam:{ current:0, plan:'—:—' }, idle:{ value:'未開始', plan:'—:—', full:false, low:false } }
       };
     });
   }
@@ -93,6 +95,7 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
     return snapshot.idle.full ? '受取' : (snapshot.idle.value === '未開始' ? '開始' : '待機中');
   }
   function fullAtLabel(plan){ return plan && plan !== '—:—' ? '満 ' + plan : '満'; }
+  function fullTimeLabel(plan){ return plan && plan !== '—:—' ? ' ' + plan : ''; }
 
   function refreshSlot(index, snapshot){
     const slot = state.slots[index];
@@ -111,20 +114,22 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
     if (!rankEditing) setText(ref.rankDisplay, 'Lv.' + slot.rank);
 
     const stamFull = !stamEditing && snapshot.stam.current >= slot.stamMax;
-    ref.stamNumber.hidden = stamEditing || stamFull;
+    const stamSelectionPreview = stamFull && stamSelected;
+    ref.stamNumber.hidden = stamEditing || (stamFull && !stamSelectionPreview);
     ref.stamInput.hidden = !stamEditing;
-    ref.stamSlash.hidden = stamFull;
-    ref.stamMax.hidden = stamFull;
-    ref.stamFull.hidden = !stamFull;
+    ref.stamSlash.hidden = stamFull && !stamSelectionPreview;
+    ref.stamMax.hidden = stamFull && !stamSelectionPreview;
+    ref.stamFull.hidden = !stamFull || stamSelectionPreview;
     if (!stamEditing) setText(ref.stamNumber, stamSelected ? selected.value : snapshot.stam.current);
-    if (!stamFull) setText(ref.stamMax, slot.stamMax);
-    if (stamFull) setText(ref.stamFull, fullAtLabel(snapshot.stam.plan));
+    if (!stamFull || stamSelectionPreview) setText(ref.stamMax, slot.stamMax);
+    if (stamFull) { setText(ref.stamFullLabel, '満'); setText(ref.stamFullTime, fullTimeLabel(snapshot.stam.plan)); }
     setSelected(ref.stamRow, stamSelected);
 
     setText(ref.idleValue, snapshot.idle.value);
     setText(ref.idlePlan, planForIdle(snapshot, index));
     ref.idleValue.hidden = !!snapshot.idle.full;
     ref.idlePlan.classList.toggle('is-full', !!snapshot.idle.full);
+    ref.idleRow.classList.toggle('is-near-full', !!snapshot.idle.low);
     setSelected(ref.idleRow, idleSelected);
 
     setCheck(ref.dailyCheck, slot.missionDone, selected && selected.index === index && selected.task === 'daily');
@@ -134,7 +139,7 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
     if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
     if (document.hidden || edit || slEdit) return;
     const now = Date.now();
-    const slTimed = hasSLTimedProgress(state.sl, now);
+    const slTimed = !!(slRuntime && state.sl && slRuntime.hasSLTimedProgress(state.sl, now));
     let dotTimed = false;
     for (let index = 0; index < state.slots.length; index += 1) { if (hasTimedProgress(state.slots[index], now)) { dotTimed = true; break; } }
     if (!dotTimed && !slTimed) return;
@@ -289,8 +294,16 @@ import { loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
     });
   }
 
-  read();
-  buildStaticList();
-  buildSL();
-  setupEvents();
-  syncAll();
+  function start(loaded) {
+    applyLoaded(loaded);
+    buildStaticList();
+    setupEvents();
+    syncAll();
+    connectStarLeap();
+  }
+
+  const existing = loadExistingV2Store(localStorage);
+  const pureV2Mode = new URLSearchParams(location.search).get('mode') === 'pure-v2';
+  if (existing) start(existing);
+  else if (pureV2Mode) import('./text-list-pure-v2.mjs').then(module => module.renderPureV2Gate());
+  else loadV2Store(localStorage).then(start).catch(() => import('./text-list-pure-v2.mjs').then(module => module.renderPureV2Gate()));
