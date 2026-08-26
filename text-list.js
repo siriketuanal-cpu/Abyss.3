@@ -1,5 +1,5 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs';
-import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store.mjs';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-lazy-v2b';
+import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store.mjs?rev=lunaby-lazy-v2b';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -36,7 +36,7 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
   function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
   function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
-  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
+  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-lazy-v2b').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
 
   function accountMarkup(slot, index){
     return '<section class="account" data-slot="' + index + '">' +
@@ -305,5 +305,5 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
   const existing = loadExistingV2Store(localStorage);
   const pureV2Mode = new URLSearchParams(location.search).get('mode') === 'pure-v2';
   if (existing) start(existing);
-  else if (pureV2Mode) import('./text-list-pure-v2.mjs').then(module => module.renderPureV2Gate());
-  else loadV2Store(localStorage).then(start).catch(() => import('./text-list-pure-v2.mjs').then(module => module.renderPureV2Gate()));
+  else if (pureV2Mode) import('./text-list-pure-v2.mjs?rev=lunaby-lazy-v2b').then(module => module.renderPureV2Gate());
+  else loadV2Store(localStorage).then(start).catch(() => import('./text-list-pure-v2.mjs?rev=lunaby-lazy-v2b').then(module => module.renderPureV2Gate()));

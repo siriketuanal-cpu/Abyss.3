@@ -1,5 +1,5 @@
-import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs';
-import { createSLState } from './starleap-state.mjs';
+import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-lazy-v2b';
+import { createSLState } from './starleap-state.mjs?rev=lunaby-lazy-v2b';
 
 export const STORAGE_KEY = 'dotabyss:unified:v1';
 
