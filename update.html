@@ -2,21 +2,13 @@
 <html lang="ja">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ルナビィを更新中</title>
+<title>ルナビィv2を更新中</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#05070a;color:#e4ebf6;font-family:system-ui,sans-serif}.box{max-width:28rem;padding:2rem;text-align:center}.small{color:#9ca9b9;font-size:.9rem;line-height:1.7}</style>
-<main class="box"><h1>ルナビィを更新しています</h1><p id="status" class="small">このブラウザの古いService Workerとキャッシュを安全に切り替えています。</p></main>
+<main class="box"><h1>ルナビィv2を更新しています</h1><p id="status" class="small">最新版入口を開いています。</p></main>
 <script>
-(async()=>{
+(() => {
   const status=document.getElementById('status');
-  try{
-    const registrations=await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.filter(registration=>new URL(registration.scope).origin===location.origin).map(registration=>registration.unregister()));
-    const cacheNames=await caches.keys();
-    await Promise.all(cacheNames.filter(name=>name.startsWith('abyss2-game-split-')||name==='abyss-timer-flat-v1-github').map(name=>caches.delete(name)));
-    status.textContent='更新が完了しました。最新のルナビィを開いています。';
-    setTimeout(()=>location.replace('./?updated=lunaby-'+Date.now().toString(36)),700);
-  }catch(error){
-    status.textContent='更新に失敗しました。画面を閉じて、もう一度このURLを開いてください。';
-  }
+  status.textContent='最新のルナビィv2を開いています。';
+  setTimeout(()=>location.replace('./?updated=lunaby-v2-r2-'+Date.now().toString(36)),300);
 })();
 </script>

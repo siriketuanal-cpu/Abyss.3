@@ -22,7 +22,7 @@ export const formatMinute = milliseconds => {
   return Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0');
 };
 
-const SLOT_DEFAULTS = Object.freeze({ label:'', rank:1, stamCurrent:0, stamMax:STAM_BASE, stamStart:null, stamRunning:false, idleStart:null, idleCapMs:IDLE_CAP_MS, idleRunning:false, missionDone:false, weeklyDone:false });
+const SLOT_DEFAULTS = Object.freeze({ label:'', rank:1, stamCurrent:0, stamMax:STAM_BASE, stamStart:null, stamRunning:false, idleStart:null, idleCapMs:IDLE_CAP_MS, idleRunning:false, missionDone:false, weeklyDone:false, enabled:true });
 function runtimeSlot(slot) {
   Object.defineProperties(slot, {
     dirty: { value:false, writable:true, enumerable:false },
@@ -55,7 +55,7 @@ export function normalizeSlot(source) {
     stamMax,
     stamStart: finite(input.stamStart, null), stamRunning: !!input.stamRunning,
     idleStart: finite(input.idleStart, null), idleCapMs: finite(input.idleCapMs, IDLE_CAP_MS), idleRunning: !!input.idleRunning,
-    missionDone: !!input.missionDone, weeklyDone: !!input.weeklyDone
+    missionDone: !!input.missionDone, weeklyDone: !!input.weeklyDone, enabled: input.enabled !== false
   });
 }
 export function computeStam(slot, now) {
@@ -134,6 +134,8 @@ export function setRank(slot, value, now) {
 }
 export function toggleMission(slot) { slot.missionDone = !slot.missionDone; markDirty(slot); }
 export function toggleWeekly(slot) { slot.weeklyDone = !slot.weeklyDone; markDirty(slot); }
+export const isSlotEnabled = slot => !!slot && slot.enabled !== false;
+export function setSlotEnabled(slot, enabled) { const next = !!enabled; if (isSlotEnabled(slot) === next) return false; slot.enabled = next; markDirty(slot); return true; }
 export function applyStam(slot, current, now) {
   const live = liveStam(slot, now);
   slot.stamCurrent = clamp(integer(current, live), 0, slot.stamMax);

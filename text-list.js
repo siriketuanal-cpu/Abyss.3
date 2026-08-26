@@ -1,5 +1,5 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-lazy-v2b';
-import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store.mjs?rev=lunaby-lazy-v2b';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r2';
+import { saveV2Store } from './lunaby-v2-store.mjs?rev=lunaby-v2-r2';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -36,7 +36,7 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
   function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
   function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
-  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-lazy-v2b').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
+  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r2').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
 
   function accountMarkup(slot, index){
     return '<section class="account" data-slot="' + index + '">' +
@@ -49,23 +49,25 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
       '<div class="task-row timer-row compact-data" data-i="' + index + '">' +
         '<span class="timer-cell stam-cell" data-i="' + index + '" data-task="stam" data-stam-confirm="' + index + '" role="button" tabindex="0">' +
         '<span class="stam-group"><span class="stam-current stam-number" data-stam-number="' + index + '" data-stam-edit="' + index + '"></span>' +
-        '<input class="stam-edit" data-stam-editor="' + index + '" type="tel" inputmode="numeric" autocomplete="off" spellcheck="false" hidden>' +
+        '<input class="stam-edit" data-stam-editor="' + index + '" type="tel" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="3" hidden>' +
         '<span class="stam-full" hidden><span class="stam-full-label" data-stam-edit="' + index + '"></span><span class="stam-full-time" data-stam-confirm="' + index + '"></span></span><span class="task-slash">/</span><span class="task-max" data-stam-number="' + index + '"></span></span>' +
         '</span>' +
         '<span class="timer-cell idle-cell" data-i="' + index + '" data-task="idle" role="button" tabindex="0"><strong class="task-value"></strong><span class="task-plan"></span></span>' +
-        '<span class="compact-check" data-compact-check="daily" data-check-index="' + index + '" role="button" tabindex="0" aria-label="デイリー"></span>' +
+        '<span class="compact-check" data-compact-check="daily" data-check-index="' + index + '" role="button" tabindex="0" aria-label="デイリー"><span class="abyss2-check" aria-hidden="true">✔</span><span class="check-awaiting" aria-hidden="true">✦</span></span>' +
       '</div>' +
     '</section>';
   }
 
   function buildStaticList(){
     const list = document.getElementById('list');
-    list.innerHTML = state.slots.map(accountMarkup).join('');
-    refs = state.slots.map((_, index) => {
+    const visibleIndices = state.slots.reduce((indices, slot, index) => { if (isSlotEnabled(slot)) indices.push(index); return indices; }, []);
+    list.innerHTML = visibleIndices.map(index => accountMarkup(state.slots[index], index)).join('');
+    refs = new Array(state.slots.length);
+    for (const index of visibleIndices) {
       const root = list.querySelector('[data-slot="' + index + '"]');
       const stamRow = root.querySelector('.stam-cell');
       const idleRow = root.querySelector('.idle-cell');
-      return {
+      refs[index] = {
         root,
         nameDisplay:root.querySelector('[data-name-edit]'), nameInput:root.querySelector('[data-name-editor]'),
         rankDisplay:root.querySelector('[data-rank-edit]'), rankInput:root.querySelector('[data-rank-editor]'),
@@ -74,7 +76,7 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
         idleRow, idleValue:idleRow.querySelector('.task-value'), idlePlan:idleRow.querySelector('.task-plan'), dailyCheck:root.querySelector('[data-compact-check="daily"]'),
         snapshot:{ stam:{ current:0, plan:'—:—' }, idle:{ value:'未開始', plan:'—:—', full:false, low:false } }
       };
-    });
+    }
   }
 
   function setText(element, value){
@@ -83,11 +85,12 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
   }
   function setSelected(element, value){ element.classList.toggle('is-selected', !!value); }
   function setCheck(element, done, awaiting){
-    setText(element, awaiting ? '✦' : (done ? '◆' : '◇'));
     element.classList.toggle('is-done', !!done);
     setSelected(element, awaiting);
+    element.classList.toggle('is-removal-pending', !!awaiting && !!done);
     element.dataset.checkState = awaiting ? 'awaiting' : (done ? 'done' : 'todo');
     element.setAttribute('aria-pressed', String(!!done));
+    element.setAttribute('aria-label', awaiting ? (done ? 'デイリー解除を確認' : 'デイリー完了を確認') : (done ? 'デイリー完了' : 'デイリー未完了'));
   }
   function editIs(type, index){ return edit && edit.type === type && edit.index === index; }
   function planForIdle(snapshot, index){
@@ -141,7 +144,7 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
     const now = Date.now();
     const slTimed = !!(slRuntime && state.sl && slRuntime.hasSLTimedProgress(state.sl, now));
     let dotTimed = false;
-    for (let index = 0; index < state.slots.length; index += 1) { if (hasTimedProgress(state.slots[index], now)) { dotTimed = true; break; } }
+    for (let index = 0; index < state.slots.length; index += 1) { if (refs[index] && hasTimedProgress(state.slots[index], now)) { dotTimed = true; break; } }
     if (!dotTimed && !slTimed) return;
     const delay = 60000 - (Date.now() % 60000) + 24;
     refreshTimer = setTimeout(syncTimedSlots, delay);
@@ -150,9 +153,10 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
     const now = Date.now();
     const date = dateJP();
     if (date !== renderedDate) { setText(document.getElementById('today'), date); renderedDate = date; }
-    const complete=document.getElementById('daily-complete'); complete.hidden = !state.slots.length || !state.slots.every(slot => slot.missionDone); setText(complete, complete.hidden ? '' : 'COMPLETE');
+    const visibleSlots = state.slots.filter(isSlotEnabled);
+    const complete=document.getElementById('daily-complete'); complete.hidden = !visibleSlots.length || !visibleSlots.every(slot => slot.missionDone); setText(complete, complete.hidden ? '' : 'COMPLETE');
     refreshSL(now);
-    for (let index = 0; index < state.slots.length; index += 1) refreshSlot(index, displaySnapshot(state.slots[index], now, refs[index].snapshot));
+    for (let index = 0; index < state.slots.length; index += 1) if (refs[index]) refreshSlot(index, displaySnapshot(state.slots[index], now, refs[index].snapshot));
     scheduleRefresh();
   }
   function syncTimedSlots(){
@@ -160,13 +164,13 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
     refreshSL(now);
     for (let index = 0; index < state.slots.length; index += 1) {
       const slot = state.slots[index];
-      if (slot.stamRunning || slot.idleRunning) refreshSlot(index, displaySnapshot(slot, now, refs[index].snapshot));
+      if (refs[index] && (slot.stamRunning || slot.idleRunning)) refreshSlot(index, displaySnapshot(slot, now, refs[index].snapshot));
     }
     scheduleRefresh();
   }
   function syncIndices(...indices){
     const now = Date.now();
-    for (const index of new Set(indices.filter(Number.isFinite))) refreshSlot(index, displaySnapshot(state.slots[index], now, refs[index].snapshot));
+    for (const index of new Set(indices.filter(Number.isFinite))) if (refs[index]) refreshSlot(index, displaySnapshot(state.slots[index], now, refs[index].snapshot));
   }
 
   function beginEdit(type, index){
@@ -266,7 +270,7 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
     });
     list.addEventListener('input', event => {
       const input = event.target;
-      if (input.matches('[data-stam-editor]')) adjustStamInputWidth(input);
+      if (input.matches('[data-stam-editor]')) { input.value=String(input.value||'').replace(/[^0-9]/g,'').slice(0,3); adjustStamInputWidth(input); }
       if (input.matches('[data-sl-editor="stamina"]')) input.value=String(input.value||'').replace(/[^0-9]/g,'').slice(0,2);
       if (input.matches('[data-sl-editor="orb"]')) { const raw=String(input.value||'').replace(/：/g,':'); let next=''; let digits=0; for(const char of raw){ if(/\d/.test(char) && digits<4){ next+=char; digits+=1; } else if(char===':' && !next.includes(':')) next+=char; } input.value=next; }
     });
@@ -294,16 +298,10 @@ import { loadExistingV2Store, loadV2Store, saveV2Store } from './lunaby-v2-store
     });
   }
 
-  function start(loaded) {
+  export function startLunaby(loaded) {
     applyLoaded(loaded);
     buildStaticList();
     setupEvents();
     syncAll();
     connectStarLeap();
   }
-
-  const existing = loadExistingV2Store(localStorage);
-  const pureV2Mode = new URLSearchParams(location.search).get('mode') === 'pure-v2';
-  if (existing) start(existing);
-  else if (pureV2Mode) import('./text-list-pure-v2.mjs?rev=lunaby-lazy-v2b').then(module => module.renderPureV2Gate());
-  else loadV2Store(localStorage).then(start).catch(() => import('./text-list-pure-v2.mjs?rev=lunaby-lazy-v2b').then(module => module.renderPureV2Gate()));

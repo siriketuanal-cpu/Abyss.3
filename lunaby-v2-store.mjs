@@ -1,5 +1,5 @@
-import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-lazy-v2b';
-import { createSLState } from './starleap-state.mjs?rev=lunaby-lazy-v2b';
+import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r2';
+import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r2';
 
 export const V2_STORAGE_KEY = 'lunaby:state:v2';
 export const V2_VERSION = 2;
@@ -8,6 +8,7 @@ const STAM_RUNNING = 1;
 const IDLE_RUNNING = 2;
 const MISSION_DONE = 4;
 const WEEKLY_DONE = 8;
+const SLOT_DISABLED = 16;
 const SL_STAM_RUNNING = 1;
 const SL_ORB_RUNNING = 2;
 
@@ -26,7 +27,8 @@ function packSlot(slot) {
   const flags = (slot.stamRunning ? STAM_RUNNING : 0)
     | (slot.idleRunning ? IDLE_RUNNING : 0)
     | (slot.missionDone ? MISSION_DONE : 0)
-    | (slot.weeklyDone ? WEEKLY_DONE : 0);
+    | (slot.weeklyDone ? WEEKLY_DONE : 0)
+    | (slot.enabled === false ? SLOT_DISABLED : 0);
   return [slot.label, slot.rank, slot.stamCurrent, slot.stamStart || 0, slot.idleStart || 0, flags];
 }
 
@@ -42,7 +44,8 @@ function unpackSlot(input) {
     idleStart: timestamp(input[4]),
     idleRunning: flag(flags, IDLE_RUNNING),
     missionDone: flag(flags, MISSION_DONE),
-    weeklyDone: flag(flags, WEEKLY_DONE)
+    weeklyDone: flag(flags, WEEKLY_DONE),
+    enabled: !flag(flags, SLOT_DISABLED)
   });
 }
 
@@ -83,17 +86,6 @@ function makeLoaded(envelope, slots, sl, source, migrated) {
   };
 }
 
-export async function loadV2Store(storage) {
-  const existing = loadExistingV2Store(storage);
-  if (existing) return existing;
-
-  const { loadStore:loadV1Store } = await import('./abyss-v1-compat.mjs?rev=lunaby-lazy-v2b');
-  const v1 = loadV1Store(storage);
-  const envelope = packState(v1.slots, v1.sl);
-  try { storage.setItem(V2_STORAGE_KEY, JSON.stringify(envelope)); } catch (_) {}
-  return makeLoaded(envelope, v1.slots, v1.sl, 'v1', true);
-}
-
 export function loadExistingV2Store(storage) {
   const v2 = parseV2(storage);
   return v2 ? makeLoaded(v2.envelope, v2.slots, v2.sl, 'v2', false) : null;
@@ -121,6 +113,20 @@ export function saveV2Store(storage, envelope, slots, changedIndex, sl) {
 
   if (!changed) return false;
   storage.setItem(V2_STORAGE_KEY, JSON.stringify(target));
+  return true;
+}
+
+export function saveV2Extension(storage, envelope, key, value) {
+  if (!envelope || envelope.v !== V2_VERSION || typeof key !== 'string' || !key) return false;
+  let encoded = '';
+  try { encoded = JSON.stringify(value); } catch (_) { return false; }
+  if (encoded === undefined) return false;
+  const extensions = envelope.g && typeof envelope.g === 'object' && !Array.isArray(envelope.g) ? envelope.g : (envelope.g = {});
+  let previous = '';
+  try { previous = JSON.stringify(extensions[key]); } catch (_) { previous = ''; }
+  if (previous === encoded) return false;
+  extensions[key] = JSON.parse(encoded);
+  storage.setItem(V2_STORAGE_KEY, JSON.stringify(envelope));
   return true;
 }
 
