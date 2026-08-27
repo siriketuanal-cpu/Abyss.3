@@ -66,6 +66,9 @@ body{overflow:hidden;touch-action:pan-x;}
 .abyss2-check{position:absolute;left:50%;top:50%;display:none;width:30px;height:30px;transform:translate(-50%,-50%);place-items:center;pointer-events:none;font:900 26px/1 "Hiragino Sans","Hiragino Maru Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,"Noto Sans JP",sans-serif;color:#d0d8e8;text-align:center;}
 .check-awaiting{position:absolute;left:50%;top:50%;display:none;width:22px;height:22px;transform:translate(-50%,-50%);place-items:center;pointer-events:none;font:900 19px/1 "Arial Black",Arial,sans-serif;color:#ffe39a;text-align:center;}
 .compact-check[data-check-state="done"] .abyss2-check{display:grid;}
+.account.group-0 .compact-check[data-check-state="done"] .abyss2-check{color:var(--group-moon);}
+.account.group-1 .compact-check[data-check-state="done"] .abyss2-check{color:var(--group-lilac);}
+.account.group-2 .compact-check[data-check-state="done"] .abyss2-check{color:var(--group-tide);}
 .compact-check[data-check-state="awaiting"] .check-awaiting{display:grid;}
 .compact-check.is-removal-pending .check-awaiting{font-size:15px;color:#ff6b73;}
 .compact-check:active .abyss2-check{color:#f1f4f8;}
