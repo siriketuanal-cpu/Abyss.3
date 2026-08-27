@@ -2,6 +2,8 @@
 
 **ルナビィ（LUNABY）**は、Dot AbyssとSTAR LEAPを扱う、静的・軽量な個人用タイマーです。GitHub Pagesを含む静的ホスティングで動作し、外部フォントや外部ライブラリを必要としません。
 
+PWAのアプリ名とアイコンも**ルナビィ**へ統一しています。月と発光する小さなキャラクターの専用アイコンを、通常192px・通常512px・maskable 512pxの3種類で配信します。
+
 ## 完全v2版
 
 この公開版は、`lunaby:state:v2`だけを読み書きする**v2専用版**です。旧形式の保存・互換モジュール・自動移行は公開物に含みません。
@@ -31,6 +33,7 @@
 | `abyss-runtime-core.mjs` | Dot Abyssの回復・放置報酬計算コア。 |
 | `starleap-state.mjs` / `starleap-lite-core.mjs` | STAR LEAPの保存正規化と計算コア。 |
 | `lunaby-v2-store.mjs` | v2保存の検証・局所保存アダプタ。配列位置は名前付き定数で管理し、保存形式は固定。 |
+| `lunaby-mascot-192.png` / `lunaby-mascot-512.png` / `lunaby-mascot-maskable-512.png` | ルナビィ専用のPWAアイコン。manifestと入口HTMLが同じ資産を参照する。 |
 | `update.html` | 保存やService Workerを操作せず、新世代入口へ戻る手動更新ページ。 |
 
 ## 使用上の確認

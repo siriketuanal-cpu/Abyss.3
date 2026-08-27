@@ -1,7 +1,7 @@
 {
-  "name": "深淵タイマー",
-  "short_name": "深淵",
-  "description": "ドットアビス、Gジェネレーション、スターリープの回復・放置報酬を管理するタイマー",
+  "name": "ルナビィ",
+  "short_name": "ルナビィ",
+  "description": "Dot AbyssとSTAR LEAPの回復・放置報酬を管理する軽量タイマー",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
@@ -11,19 +11,19 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "lunaby-mascot-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "lunaby-mascot-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-maskable-512.png",
+      "src": "lunaby-mascot-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
