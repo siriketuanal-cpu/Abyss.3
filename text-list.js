@@ -1,5 +1,5 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r9';
-import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r9';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r10';
+import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r10';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -46,7 +46,7 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
   function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
   function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
-  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r9').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
+  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r10').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
 
   function accountMarkup(slot, index){
     return '<section class="account group-' + Math.floor(index / 2) + '" data-slot="' + index + '">' +
@@ -63,7 +63,7 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
         '<input class="stam-edit" data-stam-editor="' + index + '" type="tel" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="3" hidden>' +
         '<span class="stam-full" hidden><span class="stam-full-time"><span class="stam-full-hour" data-stam-edit="' + index + '"></span><span class="stam-full-colon" aria-hidden="true">:</span><span class="stam-full-minute" data-stam-confirm="' + index + '"></span></span><span class="stam-full-label" aria-hidden="true"></span></span><span class="task-slash">/</span><span class="task-max" data-stam-number="' + index + '"></span></span>' +
         '</span>' +
-        '<span class="timer-cell idle-cell" data-i="' + index + '" data-task="idle" role="button" tabindex="0"><strong class="task-value"></strong><span class="task-plan"></span></span>' +
+        '<span class="timer-cell idle-cell"><span class="stam-confirm-bridge" data-stam-confirm="' + index + '" aria-hidden="true"></span><span class="idle-action" data-i="' + index + '" data-task="idle" role="button" tabindex="0"><strong class="task-value"></strong><span class="task-plan"></span></span></span>' +
         '<span class="compact-check" data-compact-check="daily" data-check-index="' + index + '" role="button" tabindex="0" aria-label="デイリー"><span class="abyss2-check" aria-hidden="true">✔</span><span class="check-awaiting" aria-hidden="true">✦</span></span>' +
       '</div>' +
     '</section>';
