@@ -1,10 +1,10 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r7';
-import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2-store.mjs?rev=lunaby-v2-r7';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r8';
+import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r8';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const escape = value => String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-  const dateJP = () => { const date = new Date(); return date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日'; };
+  const dateJP = now => { const [year, month, day] = dailyCycleKey(now).split('-'); return year + '年' + Number(month) + '月' + Number(day) + '日'; };
 
   let state = { slots:createSlots(), sl:null };
   let storageEnvelope = {};
@@ -17,7 +17,6 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2
   const slSnapshot = { stamina:{}, orb:{} };
   let refreshTimer = null;
   let resumeRefreshTimer = null;
-  let renderedDate = '';
   function applyLoaded(loaded){ storageEnvelope = loaded.envelope; state.slots = loaded.slots; state.sl = loaded.sl; }
 
   function write(index){
@@ -48,7 +47,7 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2
   function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
   function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
-  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r7').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
+  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r8').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
 
   function accountMarkup(slot, index){
     return '<section class="account group-' + Math.floor(index / 2) + '" data-slot="' + index + '">' +
@@ -111,8 +110,8 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2
     return snapshot.idle.full ? '受取' : (snapshot.idle.value === '未開始' ? '開始' : '');
   }
   function valueForIdle(snapshot, index){ return selected && selected.index === index && selected.task === 'idle' && !snapshot.idle.full && snapshot.idle.value !== '未開始' ? '受取' : snapshot.idle.value; }
-  function fullAtLabel(plan){ return plan && plan !== '—:—' ? plan : ''; }
-  function fullTimeParts(plan){ const [hour, minute] = String(plan || '—:—').trim().split(':'); return { hour:hour || '—', minute:minute || '—' }; }
+  function fullAtLabel(plan){ const [hour, minute] = String(plan || '').trim().split(':'); return /^\d{1,2}$/.test(hour) && /^\d{2}$/.test(minute) ? String(Number(hour)) + ':' + minute : ''; }
+  function fullTimeParts(plan){ const [hour, minute] = String(fullAtLabel(plan) || '—:—').split(':'); return { hour:hour || '—', minute:minute || '—' }; }
 
   function refreshSlot(index, snapshot){
     const slot = state.slots[index];
@@ -141,8 +140,11 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2
     if (!stamFull || stamSelectionPreview) setText(ref.stamMax, slot.stamMax);
     if (stamFull) { const fullTime=fullTimeParts(snapshot.stam.plan); setText(ref.stamFullHour, fullTime.hour); setText(ref.stamFullMinute, fullTime.minute); setText(ref.stamFullLabel, '満'); }
     setSelected(ref.stamRow, stamSelected);
+    ref.stamRow.classList.toggle('is-near-full', !!snapshot.stam.low);
 
-    setText(ref.idleValue, valueForIdle(snapshot, index));
+    const idleValue = valueForIdle(snapshot, index);
+    setText(ref.idleValue, idleValue);
+    ref.idleValue.classList.toggle('is-clock', /^\d{1,2}:\d{2}$/.test(idleValue));
     setText(ref.idlePlan, planForIdle(snapshot, index));
     ref.idleValue.hidden = !!snapshot.idle.full;
     ref.idlePlan.classList.toggle('is-full', !!snapshot.idle.full);
@@ -163,10 +165,9 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2
     const delay = 60000 - (Date.now() % 60000) + 24;
     refreshTimer = setTimeout(syncTimedSlots, delay);
   }
+  function syncHeaderDateOnStartup(now){ setText(document.getElementById('today'), dateJP(now)); }
   function syncAll(){
     const now = Date.now();
-    const date = dateJP();
-    if (date !== renderedDate) { setText(document.getElementById('today'), date); renderedDate = date; }
     const visibleSlots = state.slots.filter(isSlotEnabled);
     const complete=document.getElementById('daily-complete'); complete.hidden = !visibleSlots.length || !visibleSlots.every(slot => slot.missionDone); setText(complete, complete.hidden ? '' : 'COMPLETE');
     refreshSL(now);
@@ -323,10 +324,12 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset } from './lunaby-v2
   }
 
   export function startLunaby(loaded) {
+    const startedAt = Date.now();
     applyLoaded(loaded);
-    resetDailyMissionsOnStartup(Date.now());
+    resetDailyMissionsOnStartup(startedAt);
     buildStaticList();
     setupEvents();
+    syncHeaderDateOnStartup(startedAt);
     syncAll();
     connectStarLeap();
   }

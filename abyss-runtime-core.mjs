@@ -1,5 +1,6 @@
 export const SLOT_COUNT = 6;
 export const STAM_STEP_MS = 3 * 60 * 1000;
+export const STAM_WARNING_MS = 2 * 60 * 60 * 1000;
 export const IDLE_CAP_MS = 12 * 60 * 60 * 1000;
 export const IDLE_LEAD_MS = 5 * 60 * 1000;
 export const IDLE_WARNING_MINUTES = 2 * 60;
@@ -106,6 +107,7 @@ export function displaySnapshot(slot, now, view) {
   const idleMinutes = idleRemaining == null ? 0 : Math.max(1, Math.ceil(idleRemaining / 60000));
   stam.current = stamCurrent;
   stam.plan = stamFullAt ? cachedClock(slot, 'stam', stamFullAt) : '—:—';
+  stam.low = stamFullAt != null && stamFullAt > now && stamFullAt - now < STAM_WARNING_MS;
   idle.value = idleRemaining == null ? '未開始' : (idleRemaining ? Math.floor(idleMinutes / 60) + ':' + String(idleMinutes % 60).padStart(2, '0') : 'MAX');
   idle.plan = idleRunning ? cachedClock(slot, 'idle', idleFullAtFor(slot)) : '—:—';
   idle.full = idleRemaining === 0;
