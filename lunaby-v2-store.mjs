@@ -1,5 +1,5 @@
-import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r3';
-import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r3';
+import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r4';
+import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r4';
 
 export const V2_STORAGE_KEY = 'lunaby:state:v2';
 export const V2_VERSION = 2;
@@ -11,6 +11,19 @@ const WEEKLY_DONE = 8;
 const SLOT_DISABLED = 16;
 const SL_STAM_RUNNING = 1;
 const SL_ORB_RUNNING = 2;
+const SLOT_LABEL = 0;
+const SLOT_RANK = 1;
+const SLOT_STAM_CURRENT = 2;
+const SLOT_STAM_START = 3;
+const SLOT_IDLE_START = 4;
+const SLOT_FLAGS = 5;
+const SLOT_FIELDS = 6;
+const SL_STAM_CURRENT = 0;
+const SL_STAM_START = 1;
+const SL_ORB_CURRENT = 2;
+const SL_ORB_START = 3;
+const SL_FLAGS = 4;
+const SL_FIELDS = 5;
 
 const finite = (value, fallback) => {
   const number = Number(value);
@@ -23,25 +36,56 @@ const timestamp = value => {
 const flag = (value, bit) => (Number.isInteger(value) && (value & bit) !== 0);
 const sameArray = (left, right) => left.length === right.length && left.every((value, index) => value === right[index]);
 
+export function dailyCycleKey(now) {
+  const date = new Date(finite(now, Date.now()));
+  date.setHours(date.getHours() - 5);
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+
+export function planDailyStartupReset(envelope, slots, now) {
+  const key = dailyCycleKey(now);
+  const extensions = envelope && envelope.g && typeof envelope.g === 'object' && !Array.isArray(envelope.g) ? envelope.g : {};
+  const previous = typeof extensions.dailyMissionCycle === 'string' ? extensions.dailyMissionCycle : '';
+  if (previous === key) return { changed:false, key, reset:false, slotsChanged:false };
+  if (!previous) return { changed:true, key, reset:false, slotsChanged:false };
+
+  let slotsChanged = false;
+  for (const slot of slots) {
+    if (slot && slot.missionDone) {
+      slot.missionDone = false;
+      slot.dirty = true;
+      slotsChanged = true;
+    }
+  }
+  return { changed:true, key, reset:true, slotsChanged };
+}
+
 function packSlot(slot) {
   const flags = (slot.stamRunning ? STAM_RUNNING : 0)
     | (slot.idleRunning ? IDLE_RUNNING : 0)
     | (slot.missionDone ? MISSION_DONE : 0)
     | (slot.weeklyDone ? WEEKLY_DONE : 0)
     | (slot.enabled === false ? SLOT_DISABLED : 0);
-  return [slot.label, slot.rank, slot.stamCurrent, slot.stamStart || 0, slot.idleStart || 0, flags];
+  const packed = new Array(SLOT_FIELDS);
+  packed[SLOT_LABEL] = slot.label;
+  packed[SLOT_RANK] = slot.rank;
+  packed[SLOT_STAM_CURRENT] = slot.stamCurrent;
+  packed[SLOT_STAM_START] = slot.stamStart || 0;
+  packed[SLOT_IDLE_START] = slot.idleStart || 0;
+  packed[SLOT_FLAGS] = flags;
+  return packed;
 }
 
 function unpackSlot(input) {
-  if (!Array.isArray(input) || input.length !== 6 || typeof input[0] !== 'string' || !Number.isInteger(input[5])) return null;
-  const flags = input[5];
+  if (!Array.isArray(input) || input.length !== SLOT_FIELDS || typeof input[SLOT_LABEL] !== 'string' || !Number.isInteger(input[SLOT_FLAGS])) return null;
+  const flags = input[SLOT_FLAGS];
   return normalizeSlot({
-    label: input[0],
-    rank: input[1],
-    stamCurrent: input[2],
-    stamStart: timestamp(input[3]),
+    label: input[SLOT_LABEL],
+    rank: input[SLOT_RANK],
+    stamCurrent: input[SLOT_STAM_CURRENT],
+    stamStart: timestamp(input[SLOT_STAM_START]),
     stamRunning: flag(flags, STAM_RUNNING),
-    idleStart: timestamp(input[4]),
+    idleStart: timestamp(input[SLOT_IDLE_START]),
     idleRunning: flag(flags, IDLE_RUNNING),
     missionDone: flag(flags, MISSION_DONE),
     weeklyDone: flag(flags, WEEKLY_DONE),
@@ -51,15 +95,21 @@ function unpackSlot(input) {
 
 function packSL(sl) {
   const flags = (sl.stamina.running ? SL_STAM_RUNNING : 0) | (sl.orb.running ? SL_ORB_RUNNING : 0);
-  return [sl.stamina.current, sl.stamina.start || 0, sl.orb.current, sl.orb.start || 0, flags];
+  const packed = new Array(SL_FIELDS);
+  packed[SL_STAM_CURRENT] = sl.stamina.current;
+  packed[SL_STAM_START] = sl.stamina.start || 0;
+  packed[SL_ORB_CURRENT] = sl.orb.current;
+  packed[SL_ORB_START] = sl.orb.start || 0;
+  packed[SL_FLAGS] = flags;
+  return packed;
 }
 
 function unpackSL(input) {
-  if (!Array.isArray(input) || input.length !== 5 || !Number.isInteger(input[4])) return null;
-  const flags = input[4];
+  if (!Array.isArray(input) || input.length !== SL_FIELDS || !Number.isInteger(input[SL_FLAGS])) return null;
+  const flags = input[SL_FLAGS];
   return createSLState({
-    stamina: { current: input[0], start: timestamp(input[1]), running: flag(flags, SL_STAM_RUNNING) },
-    orb: { current: input[2], start: timestamp(input[3]), running: flag(flags, SL_ORB_RUNNING) }
+    stamina: { current: input[SL_STAM_CURRENT], start: timestamp(input[SL_STAM_START]), running: flag(flags, SL_STAM_RUNNING) },
+    orb: { current: input[SL_ORB_CURRENT], start: timestamp(input[SL_ORB_START]), running: flag(flags, SL_ORB_RUNNING) }
   });
 }
 
