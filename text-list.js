@@ -1,5 +1,5 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r15';
-import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r15';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r16';
+import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r16';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -16,14 +16,16 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
   let slRuntime = null;
   const slSnapshot = { stamina:{}, orb:{} };
   let refreshTimer = null;
+  let dailyResetTimer = null;
+  let dailyResetAt = 0;
   function applyLoaded(loaded){ storageEnvelope = loaded.envelope; state.slots = loaded.slots; state.sl = loaded.sl; }
 
   function write(index){
     try { saveV2Store(localStorage, storageEnvelope, state.slots, index, state.sl); } catch (_) {}
   }
   function writeSL(){ try { saveV2Store(localStorage, storageEnvelope, state.slots, undefined, state.sl); } catch (_) {} }
-  function resetDailyMissionsOnStartup(now){
-    const plan = planDailyStartupReset(storageEnvelope, state.slots, now);
+  function resetDailyMissionsIfNeeded(now){
+    const plan = planDailyReset(storageEnvelope, state.slots, now);
     if (!plan.changed) return;
     if (plan.slotsChanged) {
       const extensions = storageEnvelope.g && typeof storageEnvelope.g === 'object' && !Array.isArray(storageEnvelope.g) ? storageEnvelope.g : (storageEnvelope.g = {});
@@ -34,7 +36,9 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
     }
   }
   function slMarkup(){ return '<section class="starleap-line" aria-label="スターリープ"><span class="sl-item" data-sl-task="stamina" role="button" tabindex="0"><span class="sl-label">討伐依頼</span><span class="sl-value" data-sl-value="stamina"></span><input class="sl-edit" data-sl-editor="stamina" type="tel" inputmode="numeric" autocomplete="off" hidden><span class="sl-plan" data-sl-plan="stamina"></span></span><span class="sl-item" data-sl-task="orb" role="button" tabindex="0"><span class="sl-label">御大樹の恵み</span><span class="sl-value" data-sl-value="orb"></span><input class="sl-edit" data-sl-editor="orb" type="text" inputmode="numeric" autocomplete="off" hidden><span class="sl-plan" data-sl-plan="orb"></span></span></section>'; }
-  function refreshSLItem(ref, isEditing, value, plan){ ref.value.hidden=isEditing; ref.input.hidden=!isEditing; if(!isEditing) setText(ref.value,value); setText(ref.plan,isEditing?'':plan); }
+  function setHidden(element, value){ const hidden = !!value; if (element.hidden !== hidden) element.hidden = hidden; }
+  function setClass(element, name, value){ const enabled = !!value; if (element.classList.contains(name) !== enabled) element.classList.toggle(name, enabled); }
+  function refreshSLItem(ref, isEditing, value, plan){ setHidden(ref.value,isEditing); setHidden(ref.input,!isEditing); if(!isEditing) setText(ref.value,value); setText(ref.plan,isEditing?'':plan); }
   function refreshSL(now){
     if (!slRuntime || !slRefs || !state.sl) return;
     const { getTimerInfo, SL_STAM_MAX, SL_STAM_STEP_MS, SL_ORB_MAX, SL_ORB_STEP_MS, formatSLDuration } = slRuntime;
@@ -46,7 +50,7 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
   function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
   function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
-  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r15').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
+  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r16').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
 
   function accountMarkup(slot, index){
     return '<section class="account group-' + Math.floor(index / 2) + '" data-slot="' + index + '">' +
@@ -94,11 +98,11 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
     const text = String(value == null ? '' : value);
     if (element.textContent !== text) element.textContent = text;
   }
-  function setSelected(element, value){ element.classList.toggle('is-selected', !!value); }
+  function setSelected(element, value){ setClass(element, 'is-selected', value); }
   function setCheck(element, done, awaiting){
-    element.classList.toggle('is-done', !!done);
+    setClass(element, 'is-done', done);
     setSelected(element, awaiting);
-    element.classList.toggle('is-removal-pending', !!awaiting && !!done);
+    setClass(element, 'is-removal-pending', awaiting && done);
     element.dataset.checkState = awaiting ? 'awaiting' : (done ? 'done' : 'todo');
     element.setAttribute('aria-pressed', String(!!done));
     element.setAttribute('aria-label', awaiting ? (done ? 'デイリー解除を確認' : 'デイリー完了を確認') : (done ? 'デイリー完了' : 'デイリー未完了'));
@@ -121,38 +125,48 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
     const nameEditing = editIs('name', index);
     const rankEditing = editIs('rank', index);
 
-    ref.nameDisplay.hidden = nameEditing;
-    ref.nameInput.hidden = !nameEditing;
+    setHidden(ref.nameDisplay, nameEditing);
+    setHidden(ref.nameInput, !nameEditing);
     if (!nameEditing) setText(ref.nameDisplay, slot.label || ('スロット ' + (index + 1)));
-    ref.rankDisplay.hidden = rankEditing;
-    ref.rankInput.hidden = !rankEditing;
+    setHidden(ref.rankDisplay, rankEditing);
+    setHidden(ref.rankInput, !rankEditing);
     if (!rankEditing) setText(ref.rankDisplay, 'Lv.' + slot.rank);
 
     const stamFull = !stamEditing && snapshot.stam.current >= slot.stamMax;
     const stamSelectionPreview = stamFull && stamSelected;
-    ref.stamNumber.hidden = stamEditing || (stamFull && !stamSelectionPreview);
-    ref.stamInput.hidden = !stamEditing;
-    ref.stamSlash.hidden = stamFull && !stamSelectionPreview;
-    ref.stamMax.hidden = stamFull && !stamSelectionPreview;
-    ref.stamFull.hidden = !stamFull || stamSelectionPreview;
+    setHidden(ref.stamNumber, stamEditing || (stamFull && !stamSelectionPreview));
+    setHidden(ref.stamInput, !stamEditing);
+    setHidden(ref.stamSlash, stamFull && !stamSelectionPreview);
+    setHidden(ref.stamMax, stamFull && !stamSelectionPreview);
+    setHidden(ref.stamFull, !stamFull || stamSelectionPreview);
     if (!stamEditing) setText(ref.stamNumber, stamSelected ? selected.value : snapshot.stam.current);
     if (!stamFull || stamSelectionPreview) setText(ref.stamMax, slot.stamMax);
     if (stamFull) { const fullTime=fullTimeParts(snapshot.stam.plan); setText(ref.stamFullHour, fullTime.hour); setText(ref.stamFullMinute, fullTime.minute); setText(ref.stamFullLabel, '満'); }
     setSelected(ref.stamRow, stamSelected);
-    ref.stamRow.classList.toggle('is-near-full', !!snapshot.stam.low);
+    setClass(ref.stamRow, 'is-near-full', snapshot.stam.low);
 
     const idleValue = valueForIdle(snapshot, index);
     setText(ref.idleValue, idleValue);
-    ref.idleValue.classList.toggle('is-clock', /^\d{1,2}:\d{2}$/.test(idleValue));
+    setClass(ref.idleValue, 'is-clock', /^\d{1,2}:\d{2}$/.test(idleValue));
     setText(ref.idlePlan, planForIdle(snapshot, index));
-    ref.idleValue.hidden = !!snapshot.idle.full;
-    ref.idlePlan.classList.toggle('is-full', !!snapshot.idle.full);
-    ref.idleRow.classList.toggle('is-near-full', !!snapshot.idle.low);
+    setHidden(ref.idleValue, snapshot.idle.full);
+    setClass(ref.idlePlan, 'is-full', snapshot.idle.full);
+    setClass(ref.idleRow, 'is-near-full', snapshot.idle.low);
     setSelected(ref.idleRow, idleSelected);
 
     setCheck(ref.dailyCheck, slot.missionDone, selected && selected.index === index && selected.task === 'daily');
   }
 
+  function scheduleDailyReset(now){
+    if (document.hidden) return;
+    if (dailyResetTimer && dailyResetAt > now) return;
+    const current = new Date(now);
+    const next = new Date(current);
+    next.setHours(5, 0, 0, 0);
+    if (next.getTime() <= now) next.setDate(next.getDate() + 1);
+    dailyResetAt = next.getTime();
+    dailyResetTimer = setTimeout(() => { dailyResetTimer = null; dailyResetAt = 0; syncAll(); }, Math.max(1, dailyResetAt - now + 24));
+  }
   function scheduleRefresh(){
     if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
     if (document.hidden || edit || slEdit) return;
@@ -167,11 +181,13 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
   function syncHeaderDateOnStartup(now){ setText(document.getElementById('today'), dateJP(now)); }
   function syncAll(){
     const now = Date.now();
+    resetDailyMissionsIfNeeded(now);
     const visibleSlots = state.slots.filter(isSlotEnabled);
-    const complete=document.getElementById('daily-complete'); complete.hidden = !visibleSlots.length || !visibleSlots.every(slot => slot.missionDone); setText(complete, complete.hidden ? '' : 'COMPLETE');
+    const complete=document.getElementById('daily-complete'); setHidden(complete, !visibleSlots.length || !visibleSlots.every(slot => slot.missionDone)); setText(complete, complete.hidden ? '' : 'COMPLETE');
     refreshSL(now);
     for (let index = 0; index < state.slots.length; index += 1) if (refs[index]) refreshSlot(index, displaySnapshot(state.slots[index], now, refs[index].snapshot));
     scheduleRefresh();
+    scheduleDailyReset(now);
   }
   function syncTimedSlots(){
     const now = Date.now();
@@ -181,6 +197,7 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
       if (refs[index] && (slot.stamRunning || slot.idleRunning)) refreshSlot(index, displaySnapshot(slot, now, refs[index].snapshot));
     }
     scheduleRefresh();
+    scheduleDailyReset(now);
   }
   function syncIndices(...indices){
     const now = Date.now();
@@ -310,8 +327,10 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
       syncIndices(index);
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
-      else syncAfterResume();
+      if (document.hidden) {
+        if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
+        if (dailyResetTimer) { clearTimeout(dailyResetTimer); dailyResetTimer = null; dailyResetAt = 0; }
+      } else syncAfterResume();
     });
     window.addEventListener('focus', () => { if (!document.hidden) syncAfterResume(); });
     window.addEventListener('pageshow', event => { if (event.persisted) syncAfterResume(); });
@@ -320,7 +339,6 @@ import { saveV2Store, saveV2Extension, planDailyStartupReset, dailyCycleKey } fr
   export function startLunaby(loaded) {
     const startedAt = Date.now();
     applyLoaded(loaded);
-    resetDailyMissionsOnStartup(startedAt);
     buildStaticList();
     setupEvents();
     syncHeaderDateOnStartup(startedAt);

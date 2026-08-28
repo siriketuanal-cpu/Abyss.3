@@ -1,5 +1,5 @@
-import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r15';
-import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r15';
+import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r16';
+import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r16';
 
 export const V2_STORAGE_KEY = 'lunaby:state:v2';
 export const V2_VERSION = 2;
@@ -42,7 +42,7 @@ export function dailyCycleKey(now) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
 }
 
-export function planDailyStartupReset(envelope, slots, now) {
+export function planDailyReset(envelope, slots, now) {
   const key = dailyCycleKey(now);
   const extensions = envelope && envelope.g && typeof envelope.g === 'object' && !Array.isArray(envelope.g) ? envelope.g : {};
   const previous = typeof extensions.dailyMissionCycle === 'string' ? extensions.dailyMissionCycle : '';
