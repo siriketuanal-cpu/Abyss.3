@@ -1,5 +1,5 @@
-import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r12';
-import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r12';
+import { SLOT_COUNT, normalizeSlot } from './abyss-runtime-core.mjs?rev=lunaby-v2-r13';
+import { createSLState } from './starleap-state.mjs?rev=lunaby-v2-r13';
 
 export const V2_STORAGE_KEY = 'lunaby:state:v2';
 export const V2_VERSION = 2;
@@ -139,6 +139,16 @@ function makeLoaded(envelope, slots, sl, source, migrated) {
 export function loadExistingV2Store(storage) {
   const v2 = parseV2(storage);
   return v2 ? makeLoaded(v2.envelope, v2.slots, v2.sl, 'v2', false) : null;
+}
+
+export function initializeV2Store(storage) {
+  const existing = loadExistingV2Store(storage);
+  if (existing) return existing;
+  const slots = Array.from({ length:SLOT_COUNT }, () => normalizeSlot());
+  const sl = createSLState();
+  const envelope = packState(slots, sl);
+  try { storage.setItem(V2_STORAGE_KEY, JSON.stringify(envelope)); } catch (_) {}
+  return makeLoaded(envelope, slots, sl, 'initial', false);
 }
 
 export function saveV2Store(storage, envelope, slots, changedIndex, sl) {
