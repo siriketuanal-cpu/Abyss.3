@@ -1,5 +1,6 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r17';
-import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r17';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r18';
+import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r18';
+import * as starleapRuntime from './starleap-lite-core.mjs?rev=lunaby-v2-r18';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -13,7 +14,7 @@ import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './l
   let edit = null;
   let slEdit = null;
   let slRefs = null;
-  let slRuntime = null;
+  let slRuntime = starleapRuntime;
   const slSnapshot = { stamina:{}, orb:{} };
   let refreshTimer = null;
   let dailyResetTimer = null;
@@ -50,7 +51,7 @@ import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './l
   function beginSLEdit(type){ if(!slRuntime || slEdit) return; selected=null; slEdit=type; refreshSL(Date.now()); const input=slRefs[type].input; input.value=''; input.focus({preventScroll:true}); }
   function commitSLEdit(){ if(!slRuntime || !slEdit) return; const type=slEdit; const input=slRefs[type].input; const now=Date.now(); if(type==='stamina'){ const digits=String(input.value||'').replace(/[^0-9]/g,''); if(digits) slRuntime.applyStamina(state.sl.stamina,Number(digits),now); } else { const remaining=slRuntime.parseFullRecoveryInput(input.value); if(remaining!==null) slRuntime.applyFullRecovery(state.sl.orb,remaining,now); } slEdit=null; writeSL(); syncAll(); }
   function buildSL(){ const host=document.getElementById('starleap'); if(!host) return; host.innerHTML=slMarkup(); slRefs={}; for(const type of ['stamina','orb']){ const root=host.querySelector('[data-sl-task="'+type+'"]'); slRefs[type]={ root, value:root.querySelector('[data-sl-value]'), input:root.querySelector('[data-sl-editor]'), plan:root.querySelector('[data-sl-plan]') }; } }
-  function connectStarLeap(){ requestAnimationFrame(() => import('./starleap-lite-core.mjs?rev=lunaby-v2-r17').then(runtime => { slRuntime=runtime; buildSL(); syncAll(); }).catch(() => {})); }
+  function connectStarLeap(){ buildSL(); }
 
   function accountMarkup(slot, index){
     return '<section class="account group-' + Math.floor(index / 2) + '" data-slot="' + index + '">' +
@@ -332,7 +333,6 @@ import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './l
         if (dailyResetTimer) { clearTimeout(dailyResetTimer); dailyResetTimer = null; dailyResetAt = 0; }
       } else syncAfterResume();
     });
-    window.addEventListener('focus', () => { if (!document.hidden) syncAfterResume(); });
     window.addEventListener('pageshow', event => { if (event.persisted) syncAfterResume(); });
   }
 
@@ -342,6 +342,6 @@ import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './l
     buildStaticList();
     setupEvents();
     syncHeaderDateOnStartup(startedAt);
-    syncAll();
     connectStarLeap();
+    syncAll();
   }
