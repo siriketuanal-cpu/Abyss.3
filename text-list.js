@@ -1,6 +1,6 @@
-import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r18';
-import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r18';
-import * as starleapRuntime from './starleap-lite-core.mjs?rev=lunaby-v2-r18';
+import { applyStam, createSlots, displaySnapshot, hasTimedProgress, isSlotEnabled, liveStam, remainingAfter40, restartIdle, setLabel, setRank, toggleMission, toggleWeekly, formatClock } from './abyss-runtime-core.mjs?rev=lunaby-v2-r19';
+import { saveV2Store, saveV2Extension, planDailyReset, dailyCycleKey } from './lunaby-v2-store.mjs?rev=lunaby-v2-r19';
+import * as starleapRuntime from './starleap-lite-core.mjs?rev=lunaby-v2-r19';
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const num = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -333,7 +333,7 @@ import * as starleapRuntime from './starleap-lite-core.mjs?rev=lunaby-v2-r18';
         if (dailyResetTimer) { clearTimeout(dailyResetTimer); dailyResetTimer = null; dailyResetAt = 0; }
       } else syncAfterResume();
     });
-    window.addEventListener('pageshow', event => { if (event.persisted) syncAfterResume(); });
+    window.addEventListener('focus', syncAfterResume);
   }
 
   export function startLunaby(loaded) {
